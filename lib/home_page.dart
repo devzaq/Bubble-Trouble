@@ -136,39 +136,93 @@ class _HomePageState extends State<HomePage> {
 
   void fireMissile() {
     if (_midShot == false) {
-      Timer.periodic(const Duration(milliseconds: 100), (timer) {
+      Timer.periodic(const Duration(microseconds: 100), (timer) {
         _midShot = true;
         _missileHeight += 10;
         if (_missileHeight > mq.height * 3 / 4) {
           resetMissile();
-          _midShot = false;
           timer.cancel();
         }
         _missileHeightController.add([_missileHeight, _missileX]);
+        if (ballY < heightToPosition(_missileHeight) &&
+            (ballX - _missileX).abs() < 0.03) {
+          ballX = 5;
+          resetMissile();
+          timer.cancel();
+        }
       });
     }
   }
 
+  bool playerDies() {
+    if ((ballX - _playerPositionX).abs() < 0.05 && ballY > 0.95) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
   void resetMissile() {
+    _midShot = false;
     _missileHeight = 0;
     _missileX = _playerPositionX;
   }
 
   void playGame() {
     var ballDirection = Direction.left;
+    double time = 0;
+    double height = 0;
+    double velocity = 60;
 
     Timer.periodic(const Duration(milliseconds: 50), (timer) {
-      if (ballX - 0.02 < -1) {
+      //quardratic equation that models a bounce (upside down parabloa)
+      height = -5 * time * time + velocity * time;
+
+      if (height < 0) {
+        time = 0;
+      }
+
+      ballY = heightToPosition(height);
+
+      if (ballX - 0.005 < -1) {
         ballDirection = Direction.right;
-      } else if (ballX + 0.02 > 1) {
+      } else if (ballX + 0.005 > 1) {
         ballDirection = Direction.left;
       }
       if (ballDirection == Direction.left) {
-        ballX -= 0.02;
+        ballX -= 0.005;
       } else if (ballDirection == Direction.right) {
-        ballX += 0.02;
+        ballX += 0.005;
       }
       _ballController.add([ballX, ballY]);
+      time += 0.1;
+
+      if (playerDies()) {
+        timer.cancel();
+        _showDialog();
+        log("Dead💀");
+      }
     });
+  }
+
+  double heightToPosition(double height) {
+    double totalHeight = mq.height * 3 / 4;
+    double missileY = 1 - height / totalHeight * 2;
+    return missileY;
+  }
+
+  void _showDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: Colors.grey[700],
+          title: const Text(
+            "You dead bro!",
+            style: TextStyle(color: Colors.white),
+          ),
+        );
+      },
+    );
   }
 }
